@@ -1,3 +1,4 @@
 data
 logs
 train.pyc
+tf_ckpts
