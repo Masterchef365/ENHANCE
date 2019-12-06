@@ -1,35 +1,27 @@
 #!/usr/bin/env python3
 """ Trainer """
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 import datetime
-from model import get_model
+from model import Trainer
 from utils import dataset_patches
 import numpy as np
 from tensorflow import keras
 import sys
 
-def resized_dataset(patch_size, patch_downscaled, stride, n_channels, data_dir):
-    """
-    Create the dataset
-    """
-    patches_ds = dataset_patches(data_dir + "/*", patch_size, stride, n_channels)\
-        .unbatch().shuffle(buffer_size=4211).batch(1)
+PATCH_SIZE = 48
 
-    def resize_op(patch):
-        return tf.image.resize(patch,
-                               size=[patch_downscaled, patch_downscaled],
-                               method='bilinear')
+EPOCHS = 1
 
-    patches_ds = patches_ds.prefetch(tf.data.experimental.AUTOTUNE)
-    patches_resized = patches_ds.map(lambda patch: (resize_op(patch), patch))
-    patches_resized = patches_resized.prefetch(tf.data.experimental.AUTOTUNE)
-
-    return patches_resized
-
-
-DOWNSCALED_SIZE = 48
-UPSCALE_FACTOR = 4
+#from model import discriminator, upscaler
+#disc = discriminator(PATCH_SIZE)
+#upsc = upscaler(PATCH_SIZE)
+#a = np.random.random((8, PATCH_SIZE, PATCH_SIZE, 1))
+#print(disc(a))
+#print(upsc(a))
+#exit(-1)
 
 def main():
     try:
@@ -38,18 +30,32 @@ def main():
         print("Usage: {} <training data>".format(sys.argv[0]))
         exit(-1)
 
-    model = get_model(DOWNSCALED_SIZE, 1)
+    trainer = Trainer(PATCH_SIZE)
+    trainer.discriminator.summary()
 
-    model.summary()
+    patches_ds = iter(dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE, 1))
 
-    dataset = resized_dataset(DOWNSCALED_SIZE * UPSCALE_FACTOR, DOWNSCALED_SIZE, 40, 1, dataset_dir)
+    for _ in range(EPOCHS):
+        try:
+            last = next(patches_ds)
+            while True:
+                current = next(patches_ds)
+                gen_loss, disc_loss = trainer.train_step(last, current)
+                print("{} {}".format(gen_loss, disc_loss))
+                last = current
+        except StopIteration:
+            pass
 
-    model.fit(dataset, epochs=3)
+    #model.summary()
 
-    log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+    #dataset = resized_dataset(PATCH_SIZE * UPSCALE_FACTOR, PATCH_SIZE, 40, 1, dataset_dir)
 
-    model.save('saved_model', save_format='tf')
+    #model.fit(dataset, epochs=3)
+
+    #log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    #tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    #model.save('saved_model', save_format='tf')
 
 if __name__ == "__main__":
     main()
