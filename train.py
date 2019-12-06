@@ -1,63 +1,56 @@
 #!/usr/bin/env python3
+""" Trainer """
 
 import tensorflow as tf
-from tensorflow import keras
 import datetime
+from model import get_model
+from utils import dataset_patches
+import numpy as np
+from tensorflow import keras
+import sys
 
-def get_model():
-    model = keras.Sequential([
-        keras.layers.Conv2DTranspose(1, (3, 3), strides=(3, 3)),
-    ])
+def resized_dataset(patch_size, patch_downscaled, stride, n_channels, data_dir):
+    """
+    Create the dataset
+    """
+    patches_ds = dataset_patches(data_dir + "/*", patch_size, stride, n_channels)\
+        .unbatch().shuffle(buffer_size=4211).batch(1)
 
-    model.compile(optimizer='adam',
-              loss='mean_squared_error',
-              metrics=['accuracy'])
+    def resize_op(patch):
+        return tf.image.resize(patch,
+                               size=[patch_downscaled, patch_downscaled],
+                               method='bilinear')
 
-    return model
-
-def decode_img(file_path, n_channels):
-    image = tf.io.read_file(file_path)
-    image = tf.image.decode_jpeg(image, channels=n_channels)
-    image = tf.image.convert_image_dtype(image, tf.float32)
-    
-    return image
-
-def image_patches(image, size, n_channels):
-    patch_size = [1,size,size,1]
-    patches = tf.image.extract_patches([image], patch_size, patch_size, [1, 1, 1, 1], 'VALID')
-    patches = tf.reshape(patches, shape=[-1, size, size, n_channels])
-    return patches
-
-def dataset_patches(directory, patch_size, n_channels):
-    files = tf.data.Dataset.list_files(directory)
-    return files.map(lambda fname: decode_img(fname, n_channels)).map(lambda img: image_patches(img, patch_size, n_channels))
-
-def my_dataset(patch_size, patch_downscaled, n_channels, data_dir):
-    patches_ds = dataset_patches(data_dir + "/*", patch_size, n_channels).unbatch().shuffle(buffer_size=4000).batch(1)
-    patches_resized = patches_ds.map(lambda patch: (tf.image.resize(patch, size=[patch_downscaled, patch_downscaled], method='nearest'), patch))
+    patches_ds = patches_ds.prefetch(tf.data.experimental.AUTOTUNE)
+    patches_resized = patches_ds.map(lambda patch: (resize_op(patch), patch))
+    patches_resized = patches_resized.prefetch(tf.data.experimental.AUTOTUNE)
 
     return patches_resized
 
 
-log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-ckpt_dir = "./tf_ckpts/"
+DOWNSCALED_SIZE = 48
+UPSCALE_FACTOR = 4
 
-model = get_model()
+def main():
+    try:
+        dataset_dir = sys.argv[1]
+    except:
+        print("Usage: {} <training data>".format(sys.argv[0]))
+        exit(-1)
 
-try:
-    latest = tf.train.latest_checkpoint(ckpt_dir)
-    model.load_weights(latest)
-    print("Loaded checkpoint from {}.".format(latest))
-except:
-    print("Could not find checkpoint at {}. Continuing from scratch.".format(ckpt_dir))
+    model = get_model(DOWNSCALED_SIZE, 1)
 
-#tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_dir + "/ckpt", save_weights_only=True, verbose=1, save_freq='epoch')
+    model.summary()
 
-dataset = my_dataset(99, 33, 1, "./data")
-model.fit(dataset, 
-          callbacks=[
-              #tensorboard_callback,
-              cp_callback,
-              ],
-          epochs=1)
+    dataset = resized_dataset(DOWNSCALED_SIZE * UPSCALE_FACTOR, DOWNSCALED_SIZE, 40, 1, dataset_dir)
+
+    model.fit(dataset, epochs=3)
+
+    log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    model.save('saved_model', save_format='tf')
+
+if __name__ == "__main__":
+    main()
+

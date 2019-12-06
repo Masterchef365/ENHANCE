@@ -1,4 +1,6 @@
 data
 logs
-train.pyc
 tf_ckpts
+saved_model/
+__pycache__/
+test_data/
