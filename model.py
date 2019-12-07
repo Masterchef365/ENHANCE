@@ -18,29 +18,33 @@ def upscaler_unit(input_layer, units, size, stride, bnlrelu=True):
 def upscaler(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
 
-    stage0 = upscaler_unit(inp, n_channels * 64, 1, 1)
-    stage1 = upscaler_unit(stage0, n_channels * 32, 5, 2)
-    stage2 = upscaler_unit(stage1, n_channels, 5, 2, False)
+    stage0 = upscaler_unit(inp, n_channels * 32, 7, 1)
+    stage1 = upscaler_unit(stage0, n_channels * 16, 7, 1)
+    stage2 = upscaler_unit(stage1, n_channels * 9, 7, 2)
+    stage3 = upscaler_unit(stage2, n_channels, 7, 2, False)
 
-    return models.Model(inputs=inp, outputs=stage2)
+    return models.Model(inputs=inp, outputs=stage3)
 UPSCALER_FACTOR = 4
 
 @tf.function
 def upscaler_loss(fake_output):
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
+def discriminator_unit(input_layer, units, size, stride):
+    layer = layers.Conv2D(units, (size, size), strides=(stride, stride), padding='same')(input_layer)
+    layer = layers.LeakyReLU()(layer)
+    layer = layers.Dropout(0.3)(layer)
+    return layer
+
+
 def discriminator(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
 
-    conv0 = layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same')(inp)
-    conv0 = layers.LeakyReLU()(conv0)
-    conv0 = layers.Dropout(0.3)(conv0)
+    stage0 = discriminator_unit(inp, 8, 7, 2)
+    stage1 = discriminator_unit(stage0, 16, 7, 2)
+    stage2 = discriminator_unit(stage1, 32, 7, 1)
 
-    conv1 = layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same')(conv0)
-    conv1 = layers.LeakyReLU()(conv1)
-    conv1 = layers.Dropout(0.3)(conv1)
-
-    flat = layers.Flatten()(conv1)
+    flat = layers.Flatten()(stage2)
     boolean = layers.Dense(1)(flat)
 
     return models.Model(inputs=inp, outputs=boolean)

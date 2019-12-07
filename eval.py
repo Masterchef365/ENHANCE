@@ -4,7 +4,7 @@
 import sys
 import tensorflow as tf
 from utils import decode_img, image_patches
-from model import image_similarity
+from model import image_similarity, UPSCALER_FACTOR
 
 def write_tensor_as_image(path, tensor):
     tensor = tf.image.convert_image_dtype(tensor, dtype=tf.uint8, saturate=True)
@@ -21,7 +21,7 @@ def main():
 
     model = tf.keras.models.load_model('./saved_model')
 
-    PATCH_SIZE = 160 // 4
+    PATCH_SIZE = 480 // UPSCALER_FACTOR
     N_CHANNELS = 3
 
     image = decode_img(image_path, N_CHANNELS)

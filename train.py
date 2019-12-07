@@ -11,6 +11,15 @@ import numpy as np
 from tensorflow import keras
 import sys
 
+
+@tf.function
+def train_epoch(trainer, dataset):
+    for batch_idx, tup in enumerate(dataset):
+        a, b = tup
+        gen_loss, disc_loss = trainer.train_step(a, b)
+        tf.print(gen_loss, disc_loss)
+
+
 def main():
     try:
         dataset_dir = sys.argv[1]
@@ -18,13 +27,13 @@ def main():
         print("Usage: {} <training data>".format(sys.argv[0]))
         exit(-1)
 
-    N_EPOCHS = 10
-    SAVE_FREQUENCY = 1000
+    N_EPOCHS = 50
+    #SAVE_FREQUENCY = 1000
 
-    PATCH_SIZE = 160
+    PATCH_SIZE = 240
     N_CHANNELS = 3
 
-    BATCH_SIZE = 20
+    BATCH_SIZE = 10
 
     SIMILARIZE_FACTOR = 0.1
 
@@ -54,23 +63,14 @@ def main():
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     # Train
-    count = 0
     for epoch in range(N_EPOCHS):
-        tf.print("\n%%%%% Epoch {} %%%%%".format(epoch))
-        for batch_idx, tup in enumerate(dataset):
+        print("\n%%%%% Epoch {} %%%%%".format(epoch))
+        train_epoch(trainer, dataset)
 
-            a, b = tup
-            gen_loss, disc_loss = trainer.train_step(a, b)
-
-            if batch_idx % SAVE_FREQUENCY == 0:
-                tf.print("\nSaving... (Epoch {})".format(epoch))
-                trainer.upscaler.save_weights(UPSCALER_CKPT_DIR, save_format='tf')
-                trainer.discriminator.save_weights(DISCRIMINATOR_CKPT_DIR, save_format='tf')
-                trainer.upscaler.save('saved_model', save_format='tf')
-
-            tf.print("  {:4}/{:4} | Gen: {:0.3f} Disc: {:0.3f}".format(batch_idx * BATCH_SIZE, count * BATCH_SIZE, gen_loss, disc_loss), end='\r')
-
-        count = batch_idx
+        print("\nSaving...")
+        trainer.upscaler.save_weights(UPSCALER_CKPT_DIR, save_format='tf')
+        trainer.discriminator.save_weights(DISCRIMINATOR_CKPT_DIR, save_format='tf')
+        trainer.upscaler.save(MODEL_SAVE_DIR, save_format='tf')
 
     print("\nFinished training")
 
