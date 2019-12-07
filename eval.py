@@ -3,7 +3,7 @@
 
 import sys
 import tensorflow as tf
-from utils import decode_img
+from utils import decode_img, image_patches
 from model import image_similarity
 
 
@@ -17,20 +17,17 @@ def main():
 
     model = tf.keras.models.load_model('./saved_model')
 
-    image = decode_img(image_path, 1)
-    image = tf.expand_dims(image, axis=0)
-    print(image.shape)
-    model_out = model(image)
-    img = tf.squeeze(model_out, axis=0)
-    img = tf.image.convert_image_dtype(img, dtype=tf.uint8, saturate=False)
-    img = tf.image.encode_png(img)
-    tf.io.write_file("out.png", img)
+    PATCH_SIZE = 96 // 4
+    N_CHANNELS = 3
 
-    #plt.figure()
-    #plt.imshow(tf.squeeze(image))
-    #plt.imshow(tf.squeeze(model_out))
-    #plt.show()
-
+    image = decode_img(image_path, N_CHANNELS)
+    patches = image_patches(image, PATCH_SIZE, PATCH_SIZE, N_CHANNELS)
+    model_out = model(patches)
+    for idx, patch in enumerate(model_out):
+        patch = tf.image.convert_image_dtype(patch, dtype=tf.uint8, saturate=False)
+        img = tf.image.encode_png(patch)
+        name = "{}.png".format(idx)
+        tf.io.write_file(name, img)
 
 if __name__ == "__main__":
     main()

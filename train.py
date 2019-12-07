@@ -26,12 +26,13 @@ def main():
         print("Usage: {} <training data>".format(sys.argv[0]))
         exit(-1)
 
-    PATCH_SIZE = 48*2
+    PATCH_SIZE = 96
+    N_CHANNELS = 3
 
-    trainer = Trainer(PATCH_SIZE)
+    trainer = Trainer(PATCH_SIZE, N_CHANNELS)
     trainer.discriminator.summary()
 
-    patches_ds = dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE, 1).unbatch()
+    patches_ds = dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE, N_CHANNELS).unbatch()
 
     d_a = patches_ds.shuffle(buffer_size=1000).batch(40)
     d_b = patches_ds.shuffle(buffer_size=1000).batch(40)
