@@ -21,8 +21,10 @@ def main():
     N_EPOCHS = 10
     SAVE_FREQUENCY = 1000
 
-    PATCH_SIZE = 192
+    PATCH_SIZE = 160
     N_CHANNELS = 3
+
+    BATCH_SIZE = 20
 
     UPSCALER_CKPT_DIR = 'checkpoint/upscaler_saved_model'
     DISCRIMINATOR_CKPT_DIR = 'checkpoint/discriminator_saved_model'
@@ -38,14 +40,14 @@ def main():
     except:
         print("Failed to find weights. Starting from scratch.")
 
-    #trainer.discriminator.summary()
-    #trainer.upscaler.summary()
+    trainer.discriminator.summary()
+    trainer.upscaler.summary()
 
     # Prepare datasets
     patches_ds = dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE, N_CHANNELS).unbatch()
 
-    d_a = patches_ds.shuffle(buffer_size=1000).batch(40)
-    d_b = patches_ds.shuffle(buffer_size=1000).batch(40)
+    d_a = patches_ds.shuffle(buffer_size=1000).batch(BATCH_SIZE)
+    d_b = patches_ds.shuffle(buffer_size=1000).batch(BATCH_SIZE)
     dataset = tf.data.Dataset.zip((d_a, d_b))
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -53,20 +55,20 @@ def main():
     count = 0
     for epoch in range(N_EPOCHS):
         tf.print("\n%%%%% Epoch {} %%%%%".format(epoch))
-        for idx, tup in enumerate(dataset):
+        for batch_idx, tup in enumerate(dataset):
 
             a, b = tup
             gen_loss, disc_loss = trainer.train_step(a, b)
 
-            if idx % SAVE_FREQUENCY == 0:
+            if batch_idx % SAVE_FREQUENCY == 0:
                 tf.print("\nSaving... (Epoch {})".format(epoch))
                 trainer.upscaler.save_weights(UPSCALER_CKPT_DIR, save_format='tf')
                 trainer.discriminator.save_weights(DISCRIMINATOR_CKPT_DIR, save_format='tf')
                 trainer.upscaler.save('saved_model', save_format='tf')
 
-            tf.print("  {:4}/{:4} | Gen: {:0.3f} Disc: {:0.3f}".format(idx, count, gen_loss, disc_loss), end='\r')
+            tf.print("  {:4}/{:4} | Gen: {:0.3f} Disc: {:0.3f}".format(batch_idx * BATCH_SIZE, count * BATCH_SIZE, gen_loss, disc_loss), end='\r')
 
-        count = idx
+        count = batch_idx
 
     print("\nFinished training")
 
