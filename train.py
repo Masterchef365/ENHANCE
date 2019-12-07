@@ -26,12 +26,15 @@ def main():
         print("Usage: {} <training data>".format(sys.argv[0]))
         exit(-1)
 
-    PATCH_SIZE = 96
-    N_CHANNELS = 3
+    PATCH_SIZE = 192
+    N_CHANNELS = 1
 
+    # Set up trainer
     trainer = Trainer(PATCH_SIZE, N_CHANNELS)
     trainer.discriminator.summary()
+    trainer.upscaler.summary()
 
+    # Prepare datasets
     patches_ds = dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE, N_CHANNELS).unbatch()
 
     d_a = patches_ds.shuffle(buffer_size=1000).batch(40)
@@ -39,18 +42,26 @@ def main():
     dataset = tf.data.Dataset.zip((d_a, d_b))
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-    for epoch in range(10):
-        print("%%%%% Epoch {} %%%%%".format(epoch))
-        for tup in dataset:
+    # Train
+    N_EPOCHS = 10
+    SAVE_FREQUENCY = 1000
+    count = 0
+    for epoch in range(N_EPOCHS):
+        tf.print("\n%%%%% Epoch {} %%%%%".format(epoch))
+        for idx, tup in enumerate(dataset):
+
             a, b = tup
-            tf.print(trainer.train_step(a, b))
+            gen_loss, disc_loss = trainer.train_step(a, b)
 
-    print("Finished training")
+            if idx % SAVE_FREQUENCY == 0:
+                tf.print("\nSaving... (Epoch {})".format(epoch))
+                trainer.upscaler.save('saved_model', save_format='tf')
 
-    #log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    #tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+            tf.print("  {:4}/{:4} | Gen: {:0.3f} Dist: {:0.3f}".format(idx, count, gen_loss, disc_loss), end='\r')
 
-    trainer.upscaler.save('saved_model', save_format='tf')
+        count = idx
+
+    print("\nFinished training")
 
 if __name__ == "__main__":
     main()

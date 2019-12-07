@@ -17,8 +17,8 @@ def main():
 
     model = tf.keras.models.load_model('./saved_model')
 
-    PATCH_SIZE = 96 // 4
-    N_CHANNELS = 3
+    PATCH_SIZE = 192 // 4
+    N_CHANNELS = 1
 
     image = decode_img(image_path, N_CHANNELS)
     patches = image_patches(image, PATCH_SIZE, PATCH_SIZE, N_CHANNELS)

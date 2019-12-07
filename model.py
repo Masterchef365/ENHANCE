@@ -11,15 +11,17 @@ cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 def upscaler(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
 
-    stage1 = layers.Conv2DTranspose(n_channels, (3, 3), strides=(2, 2), padding='same')(inp)
+    stage1 = layers.Conv2DTranspose(n_channels * 128, (1, 1), strides=(1, 1), padding='same')(inp)
     state1 = layers.BatchNormalization()(stage1)
     state1 = layers.LeakyReLU()(stage1)
 
-    stage2 = layers.Conv2DTranspose(n_channels, (3, 3), strides=(2, 2), padding='same')(stage1)
+    stage2 = layers.Conv2DTranspose(n_channels * 64, (5, 5), strides=(2, 2), padding='same')(stage1)
     state2 = layers.BatchNormalization()(stage2)
     state2 = layers.LeakyReLU()(stage2)
 
-    return models.Model(inputs=inp, outputs=stage2)
+    stage3 = layers.Conv2DTranspose(n_channels, (5, 5), strides=(2, 2), padding='same')(stage2)
+
+    return models.Model(inputs=inp, outputs=stage3)
 UPSCALER_FACTOR = 4
 
 @tf.function
@@ -85,7 +87,7 @@ class Trainer:
             fake_output = self.discriminator(upscaled_a, training=True)
     
             gen_loss = upscaler_loss(fake_output)
-            gen_loss += cross_entropy(image_a, upscaled_a) # Incentivise making the image similar to the original
+            #gen_loss += cross_entropy(image_a, upscaled_a) # Incentivise making the image similar to the original
             disc_loss = discriminator_loss(real_output, fake_output)
     
         gradients_of_upscaler = gen_tape.gradient(gen_loss, self.upscaler.trainable_variables)
