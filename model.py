@@ -8,20 +8,21 @@ def image_similarity(y_true, y_pred):
 # Helper
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
+def upscaler_unit(input_layer, units, size, stride, bnlrelu=True):
+    layer = layers.Conv2DTranspose(units, (size, size), strides=(stride, stride), padding='same')(input_layer)
+    if bnlrelu:
+        layer = layers.BatchNormalization()(layer)
+        layer = layers.LeakyReLU()(layer)
+    return layer
+
 def upscaler(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
 
-    stage1 = layers.Conv2DTranspose(n_channels * 128, (1, 1), strides=(1, 1), padding='same')(inp)
-    state1 = layers.BatchNormalization()(stage1)
-    state1 = layers.LeakyReLU()(stage1)
+    stage0 = upscaler_unit(inp, n_channels * 64, 1, 1)
+    stage1 = upscaler_unit(stage0, n_channels * 32, 5, 2)
+    stage2 = upscaler_unit(stage1, n_channels, 5, 2, False)
 
-    stage2 = layers.Conv2DTranspose(n_channels * 64, (5, 5), strides=(2, 2), padding='same')(stage1)
-    state2 = layers.BatchNormalization()(stage2)
-    state2 = layers.LeakyReLU()(stage2)
-
-    stage3 = layers.Conv2DTranspose(n_channels, (5, 5), strides=(2, 2), padding='same')(stage2)
-
-    return models.Model(inputs=inp, outputs=stage3)
+    return models.Model(inputs=inp, outputs=stage2)
 UPSCALER_FACTOR = 4
 
 @tf.function
@@ -32,7 +33,6 @@ def discriminator(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
 
     conv0 = layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same')(inp)
-
     conv0 = layers.LeakyReLU()(conv0)
     conv0 = layers.Dropout(0.3)(conv0)
 
