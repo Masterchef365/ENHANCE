@@ -53,11 +53,12 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 class Trainer:
-    def __init__(self, image_size, n_channels):
+    def __init__(self, image_size, n_channels, similarize_factor):
         """
         image_size: Full-scale image size (Must be divisible by scale_factor)
         scale_factor: Scale factor from input to output (Must be divisible by 2)
         """
+        self.similarize_factor = tf.constant(similarize_factor)
         self.image_size = image_size
         downscaled_size = image_size // UPSCALER_FACTOR
 
@@ -87,7 +88,7 @@ class Trainer:
             fake_output = self.discriminator(upscaled_a, training=True)
     
             gen_loss = upscaler_loss(fake_output)
-            #gen_loss += cross_entropy(image_a, upscaled_a) # Incentivise making the image similar to the original
+            gen_loss += self.similarize_factor * cross_entropy(image_a, upscaled_a)
             disc_loss = discriminator_loss(real_output, fake_output)
     
         gradients_of_upscaler = gen_tape.gradient(gen_loss, self.upscaler.trainable_variables)

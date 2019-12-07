@@ -7,7 +7,7 @@ from utils import decode_img, image_patches
 from model import image_similarity
 
 def write_tensor_as_image(path, tensor):
-    tensor = tf.image.convert_image_dtype(tensor, dtype=tf.uint8, saturate=False)
+    tensor = tf.image.convert_image_dtype(tensor, dtype=tf.uint8, saturate=True)
     img = tf.image.encode_png(tensor)
     tf.io.write_file(path, img)
 
@@ -27,9 +27,9 @@ def main():
     image = decode_img(image_path, N_CHANNELS)
     patches = image_patches(image, PATCH_SIZE, PATCH_SIZE, N_CHANNELS)
     model_out = model(patches)
-    for idx, patch in enumerate(model_out):
-        name = "{}.png".format(idx)
-        write_tensor_as_image(name, patch)
+    for idx, (patch_in, patch_out) in enumerate(zip(patches, model_out)):
+        write_tensor_as_image("{}a.png".format(idx), patch_in)
+        write_tensor_as_image("{}b.png".format(idx), patch_out)
     #image = tf.expand_dims(image, axis=0)
     #model_out = model(image)
     #model_out = tf.squeeze(model_out, axis=0)

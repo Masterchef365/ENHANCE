@@ -26,12 +26,14 @@ def main():
 
     BATCH_SIZE = 20
 
+    SIMILARIZE_FACTOR = 0.1
+
     UPSCALER_CKPT_DIR = 'checkpoint/upscaler_saved_model'
     DISCRIMINATOR_CKPT_DIR = 'checkpoint/discriminator_saved_model'
     MODEL_SAVE_DIR = 'saved_model'
 
     # Set up trainer
-    trainer = Trainer(PATCH_SIZE, N_CHANNELS)
+    trainer = Trainer(PATCH_SIZE, N_CHANNELS, SIMILARIZE_FACTOR)
 
     try:
         trainer.upscaler.load_weights(UPSCALER_CKPT_DIR)
