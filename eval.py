@@ -18,7 +18,9 @@ def main():
     model = tf.keras.models.load_model('./saved_model')
 
     image = decode_img(image_path, 1)
-    model_out = model(tf.expand_dims(image, axis=0))
+    image = tf.expand_dims(image, axis=0)
+    print(image.shape)
+    model_out = model(image)
     img = tf.squeeze(model_out, axis=0)
     img = tf.image.convert_image_dtype(img, dtype=tf.uint8, saturate=False)
     img = tf.image.encode_png(img)
