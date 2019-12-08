@@ -37,8 +37,9 @@ def main():
     N_CHANNELS = 3
 
     BATCH_SIZE = 20
+    LEARNING_RATE = 1e-5
 
-    SIMILARIZE_FACTOR = 1.0
+    SIMILARIZE_FACTOR = 0.8
 
     UPSCALER_CKPT_DIR = 'checkpoint/upscaler_saved_model'
     DISCRIMINATOR_CKPT_DIR = 'checkpoint/discriminator_saved_model'
@@ -46,7 +47,7 @@ def main():
     LOG_DIR = 'logs/'
 
     # Set up trainer
-    trainer = Trainer(PATCH_SIZE, N_CHANNELS, SIMILARIZE_FACTOR, 1e-5)
+    trainer = Trainer(PATCH_SIZE, N_CHANNELS, SIMILARIZE_FACTOR, LEARNING_RATE)
 
     try:
         trainer.upscaler.load_weights(UPSCALER_CKPT_DIR)
@@ -67,18 +68,18 @@ def main():
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     # Train
-    for epoch in range(N_EPOCHS):
-        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        train_summary_writer = tf.summary.create_file_writer(LOG_DIR + current_time)
-
-        with train_summary_writer.as_default():
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    train_summary_writer = tf.summary.create_file_writer(LOG_DIR + current_time)
+    with train_summary_writer.as_default():
+        for epoch in range(N_EPOCHS):
             print("\n%%%%% Epoch {} %%%%%".format(epoch))
+
             train_epoch(trainer, dataset)
 
-        print("\nSaving...")
-        trainer.upscaler.save_weights(UPSCALER_CKPT_DIR, save_format='tf')
-        trainer.discriminator.save_weights(DISCRIMINATOR_CKPT_DIR, save_format='tf')
-        trainer.upscaler.save(MODEL_SAVE_DIR, save_format='tf')
+            print("\nSaving...")
+            trainer.upscaler.save_weights(UPSCALER_CKPT_DIR, save_format='tf')
+            trainer.discriminator.save_weights(DISCRIMINATOR_CKPT_DIR, save_format='tf')
+            trainer.upscaler.save(MODEL_SAVE_DIR, save_format='tf')
 
     print("\nFinished training")
 

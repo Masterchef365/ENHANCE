@@ -101,7 +101,7 @@ class Trainer:
     
             gen_loss = upscaler_loss(fake_output)
             img_diff = image_diff(image_a, upscaled_a)
-            gen_loss += img_diff
+            gen_loss += self.similarize_factor * img_diff
             disc_loss = discriminator_loss(real_output, fake_output)
     
         gradients_of_upscaler = gen_tape.gradient(gen_loss, self.upscaler.trainable_variables)
