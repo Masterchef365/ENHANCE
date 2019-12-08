@@ -25,13 +25,10 @@ def upscaler_unit(input_layer, units, size, stride, bnlrelu=True):
 
 def upscaler(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
-
     stage0 = upscaler_unit(inp, n_channels * 128, 5, 1)
-    stage1 = upscaler_unit(stage0, n_channels * 64, 5, 1)
-    stage2 = upscaler_unit(stage1, n_channels * 32, 5, 2)
-    stage3 = upscaler_unit(stage2, n_channels, 5, 2, False)
-
-    return models.Model(inputs=inp, outputs=stage3)
+    stage1 = upscaler_unit(stage0, n_channels * 64, 5, 2)
+    stage2 = upscaler_unit(stage1, n_channels, 5, 2, False)
+    return models.Model(inputs=inp, outputs=stage2)
 UPSCALER_FACTOR = 4
 
 @tf.function
@@ -44,17 +41,13 @@ def discriminator_unit(input_layer, units, size, stride):
     layer = layers.Dropout(0.3)(layer)
     return layer
 
-
 def discriminator(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
-
-    stage0 = discriminator_unit(inp, 32, 5, 2)
-    stage1 = discriminator_unit(stage0, 64, 5, 2)
-    stage2 = discriminator_unit(stage1, 128, 5, 1)
-
+    stage0 = discriminator_unit(inp, 64, 5, 2)
+    stage1 = discriminator_unit(stage0, 128, 5, 2)
+    stage2 = discriminator_unit(stage1, 256, 5, 2)
     flat = layers.Flatten()(stage2)
     boolean = layers.Dense(1)(flat)
-
     return models.Model(inputs=inp, outputs=boolean)
 
 @tf.function
@@ -83,7 +76,7 @@ class Trainer:
         self.downscaled_size_tensor = tf.constant([downscaled_size, downscaled_size])
 
     @tf.function
-    def train_step(self, image_a, image_b):
+    def train_step(self, image_a):
         """
         Downscales A, upscales that result synthetically to the original size,
         then the success of that is compared to B.
@@ -96,7 +89,7 @@ class Trainer:
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             upscaled_a = self.upscaler(image_a_downscale, training=True)
     
-            real_output = self.discriminator(image_b, training=True)
+            real_output = self.discriminator(image_a, training=True)
             fake_output = self.discriminator(upscaled_a, training=True)
     
             gen_loss = upscaler_loss(fake_output)

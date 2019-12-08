@@ -14,9 +14,8 @@ import sys
 
 @tf.function
 def train_epoch(trainer, dataset):
-    for batch_idx, tup in enumerate(dataset):
-        a, b = tup
-        gen_loss, disc_loss, img_diff = trainer.train_step(a, b)
+    for batch_idx, image in enumerate(dataset):
+        gen_loss, disc_loss, img_diff = trainer.train_step(image)
         tf.print(gen_loss, disc_loss, img_diff)
         tf.summary.scalar('generator_loss', gen_loss, step=batch_idx)
         tf.summary.scalar('discriminator_loss', disc_loss, step=batch_idx)
@@ -39,7 +38,7 @@ def main():
     BATCH_SIZE = 20
     LEARNING_RATE = 1e-5
 
-    SIMILARIZE_FACTOR = 0.8
+    SIMILARIZE_FACTOR = 1.0
 
     UPSCALER_CKPT_DIR = 'checkpoint/upscaler_saved_model'
     DISCRIMINATOR_CKPT_DIR = 'checkpoint/discriminator_saved_model'
@@ -61,11 +60,8 @@ def main():
 
     # Prepare datasets
     patches_ds = dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE // 2, N_CHANNELS).unbatch()
-
-    d_a = patches_ds.shuffle(buffer_size=1000).batch(BATCH_SIZE)
-    d_b = patches_ds.shuffle(buffer_size=1000).batch(BATCH_SIZE)
-    dataset = tf.data.Dataset.zip((d_a, d_b))
-    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+    patches_ds = patches_ds.shuffle(buffer_size=1000).batch(BATCH_SIZE)
+    patches_ds = patches_ds.prefetch(tf.data.experimental.AUTOTUNE)
 
     # Train
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -74,7 +70,7 @@ def main():
         for epoch in range(N_EPOCHS):
             print("\n%%%%% Epoch {} %%%%%".format(epoch))
 
-            train_epoch(trainer, dataset)
+            train_epoch(trainer, patches_ds)
 
             print("\nSaving...")
             trainer.upscaler.save_weights(UPSCALER_CKPT_DIR, save_format='tf')
