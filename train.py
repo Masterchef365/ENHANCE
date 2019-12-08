@@ -16,8 +16,8 @@ import sys
 def train_epoch(trainer, dataset):
     for batch_idx, tup in enumerate(dataset):
         a, b = tup
-        gen_loss, disc_loss = trainer.train_step(a, b)
-        tf.print(gen_loss, disc_loss)
+        gen_loss, disc_loss, img_diff = trainer.train_step(a, b)
+        tf.print(gen_loss, disc_loss, img_diff)
 
 
 def main():
@@ -33,9 +33,9 @@ def main():
     PATCH_SIZE = 240
     N_CHANNELS = 3
 
-    BATCH_SIZE = 10
+    BATCH_SIZE = 20
 
-    SIMILARIZE_FACTOR = 0.1
+    SIMILARIZE_FACTOR = 1.0
 
     UPSCALER_CKPT_DIR = 'checkpoint/upscaler_saved_model'
     DISCRIMINATOR_CKPT_DIR = 'checkpoint/discriminator_saved_model'
@@ -55,7 +55,7 @@ def main():
     trainer.upscaler.summary()
 
     # Prepare datasets
-    patches_ds = dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE, N_CHANNELS).unbatch()
+    patches_ds = dataset_patches(dataset_dir + "/*", PATCH_SIZE, PATCH_SIZE // 2, N_CHANNELS).unbatch()
 
     d_a = patches_ds.shuffle(buffer_size=1000).batch(BATCH_SIZE)
     d_b = patches_ds.shuffle(buffer_size=1000).batch(BATCH_SIZE)

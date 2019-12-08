@@ -1,5 +1,10 @@
 import tensorflow as tf
 
+def write_tensor_as_image(path, tensor):
+    tensor = tf.image.convert_image_dtype(tensor, dtype=tf.uint16, saturate=True)
+    img = tf.image.encode_png(tensor)
+    tf.io.write_file(path, img)
+
 
 def decode_img(file_path, n_channels):
     image = tf.io.read_file(file_path)

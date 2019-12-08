@@ -3,13 +3,8 @@
 
 import sys
 import tensorflow as tf
-from utils import decode_img, image_patches
-from model import image_similarity, UPSCALER_FACTOR
-
-def write_tensor_as_image(path, tensor):
-    tensor = tf.image.convert_image_dtype(tensor, dtype=tf.uint8, saturate=True)
-    img = tf.image.encode_png(tensor)
-    tf.io.write_file(path, img)
+from utils import decode_img, image_patches, write_tensor_as_image
+from model import image_diff, UPSCALER_FACTOR
 
 def main():
     """ Main function """
@@ -25,7 +20,7 @@ def main():
     N_CHANNELS = 3
 
     image = decode_img(image_path, N_CHANNELS)
-    patches = image_patches(image, PATCH_SIZE, PATCH_SIZE, N_CHANNELS)
+    patches = image_patches(image, PATCH_SIZE, PATCH_SIZE // 2, N_CHANNELS)
     model_out = model(patches)
     for idx, (patch_in, patch_out) in enumerate(zip(patches, model_out)):
         write_tensor_as_image("{}a.png".format(idx), patch_in)

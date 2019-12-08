@@ -2,8 +2,16 @@ from tensorflow.keras import layers
 from tensorflow.keras import models
 import tensorflow as tf 
 
-def image_similarity(y_true, y_pred):
-    return 1.0 - tf.math.reduce_mean(tf.math.abs(y_pred-y_true))
+@tf.function
+def image_diff(y_true, y_pred):
+    return tf.math.reduce_mean(tf.math.abs(y_pred-y_true))
+
+#import numpy as np
+#a = np.random.random((1, 33, 33, 1))
+#b = np.random.random((1, 33, 33, 1))
+#print(image_diff(a, b))
+#print(image_diff(a, a))
+#print(image_diff(b, b))
 
 # Helper
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
@@ -18,10 +26,10 @@ def upscaler_unit(input_layer, units, size, stride, bnlrelu=True):
 def upscaler(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
 
-    stage0 = upscaler_unit(inp, n_channels * 32, 7, 1)
-    stage1 = upscaler_unit(stage0, n_channels * 16, 7, 1)
-    stage2 = upscaler_unit(stage1, n_channels * 9, 7, 2)
-    stage3 = upscaler_unit(stage2, n_channels, 7, 2, False)
+    stage0 = upscaler_unit(inp, n_channels * 64, 5, 1)
+    stage1 = upscaler_unit(stage0, n_channels * 32, 5, 1)
+    stage2 = upscaler_unit(stage1, n_channels * 16, 5, 2)
+    stage3 = upscaler_unit(stage2, n_channels, 5, 2, False)
 
     return models.Model(inputs=inp, outputs=stage3)
 UPSCALER_FACTOR = 4
@@ -40,9 +48,9 @@ def discriminator_unit(input_layer, units, size, stride):
 def discriminator(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
 
-    stage0 = discriminator_unit(inp, 8, 7, 2)
-    stage1 = discriminator_unit(stage0, 16, 7, 2)
-    stage2 = discriminator_unit(stage1, 32, 7, 1)
+    stage0 = discriminator_unit(inp, 16, 5, 2)
+    stage1 = discriminator_unit(stage0, 32, 5, 2)
+    stage2 = discriminator_unit(stage1, 64, 5, 1)
 
     flat = layers.Flatten()(stage2)
     boolean = layers.Dense(1)(flat)
@@ -92,7 +100,8 @@ class Trainer:
             fake_output = self.discriminator(upscaled_a, training=True)
     
             gen_loss = upscaler_loss(fake_output)
-            gen_loss += self.similarize_factor * cross_entropy(image_a, upscaled_a)
+            img_diff = image_diff(image_a, upscaled_a)
+            gen_loss += img_diff
             disc_loss = discriminator_loss(real_output, fake_output)
     
         gradients_of_upscaler = gen_tape.gradient(gen_loss, self.upscaler.trainable_variables)
@@ -101,4 +110,4 @@ class Trainer:
         self.upscaler_optimizer.apply_gradients(zip(gradients_of_upscaler, self.upscaler.trainable_variables))
         self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables))
 
-        return (gen_loss, disc_loss)
+        return (gen_loss, disc_loss, img_diff)
