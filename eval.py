@@ -16,11 +16,11 @@ def main():
 
     model = tf.keras.models.load_model('./saved_model')
 
-    PATCH_SIZE = 480 // UPSCALER_FACTOR
+    PATCH_SIZE = 240 // UPSCALER_FACTOR
     N_CHANNELS = 3
 
     image = decode_img(image_path, N_CHANNELS)
-    patches = image_patches(image, PATCH_SIZE, PATCH_SIZE // 2, N_CHANNELS)
+    patches = image_patches(image, PATCH_SIZE, PATCH_SIZE, N_CHANNELS)
     model_out = model(patches)
     for idx, (patch_in, patch_out) in enumerate(zip(patches, model_out)):
         write_tensor_as_image("{}a.png".format(idx), patch_in)

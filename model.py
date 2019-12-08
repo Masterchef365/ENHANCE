@@ -65,7 +65,7 @@ def discriminator_loss(real_output, fake_output):
     return total_loss
 
 class Trainer:
-    def __init__(self, image_size, n_channels, similarize_factor):
+    def __init__(self, image_size, n_channels, similarize_factor, learning_rate):
         """
         image_size: Full-scale image size (Must be divisible by scale_factor)
         scale_factor: Scale factor from input to output (Must be divisible by 2)
@@ -77,8 +77,8 @@ class Trainer:
         self.upscaler = upscaler(downscaled_size, n_channels)
         self.discriminator = discriminator(image_size, n_channels)
 
-        self.upscaler_optimizer = tf.keras.optimizers.Adam(1e-4)
-        self.discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
+        self.upscaler_optimizer = tf.keras.optimizers.Adam(learning_rate)
+        self.discriminator_optimizer = tf.keras.optimizers.Adam(learning_rate)
 
         self.downscaled_size_tensor = tf.constant([downscaled_size, downscaled_size])
 

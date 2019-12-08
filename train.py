@@ -46,7 +46,7 @@ def main():
     LOG_DIR = 'logs/'
 
     # Set up trainer
-    trainer = Trainer(PATCH_SIZE, N_CHANNELS, SIMILARIZE_FACTOR)
+    trainer = Trainer(PATCH_SIZE, N_CHANNELS, SIMILARIZE_FACTOR, 1e-5)
 
     try:
         trainer.upscaler.load_weights(UPSCALER_CKPT_DIR)
