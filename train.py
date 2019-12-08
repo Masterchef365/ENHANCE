@@ -18,6 +18,9 @@ def train_epoch(trainer, dataset):
         a, b = tup
         gen_loss, disc_loss, img_diff = trainer.train_step(a, b)
         tf.print(gen_loss, disc_loss, img_diff)
+        tf.summary.scalar('generator_loss', gen_loss, step=batch_idx)
+        tf.summary.scalar('discriminator_loss', disc_loss, step=batch_idx)
+        tf.summary.scalar('image_diff', img_diff, step=batch_idx)
 
 
 def main():
@@ -40,6 +43,7 @@ def main():
     UPSCALER_CKPT_DIR = 'checkpoint/upscaler_saved_model'
     DISCRIMINATOR_CKPT_DIR = 'checkpoint/discriminator_saved_model'
     MODEL_SAVE_DIR = 'saved_model'
+    LOG_DIR = 'logs/'
 
     # Set up trainer
     trainer = Trainer(PATCH_SIZE, N_CHANNELS, SIMILARIZE_FACTOR)
@@ -64,8 +68,12 @@ def main():
 
     # Train
     for epoch in range(N_EPOCHS):
-        print("\n%%%%% Epoch {} %%%%%".format(epoch))
-        train_epoch(trainer, dataset)
+        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        train_summary_writer = tf.summary.create_file_writer(LOG_DIR + current_time)
+
+        with train_summary_writer.as_default():
+            print("\n%%%%% Epoch {} %%%%%".format(epoch))
+            train_epoch(trainer, dataset)
 
         print("\nSaving...")
         trainer.upscaler.save_weights(UPSCALER_CKPT_DIR, save_format='tf')
