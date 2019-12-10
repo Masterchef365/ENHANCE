@@ -14,10 +14,15 @@ def main():
         print("Usage: {} <image path>".format(sys.argv[0]))
         exit(-1)
 
-    model = tf.keras.models.load_model('./saved_model')
+    try:
+        model_path = sys.argv[2]
+    except:
+        model_path = './saved_model'
 
     PATCH_SIZE = 240 // UPSCALER_FACTOR
     N_CHANNELS = 3
+
+    model = tf.keras.models.load_model(model_path)
 
     image = decode_img(image_path, N_CHANNELS)
     patches = image_patches(image, PATCH_SIZE, PATCH_SIZE, N_CHANNELS)

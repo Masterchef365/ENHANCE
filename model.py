@@ -45,8 +45,7 @@ def discriminator(input_size, n_channels):
     inp = layers.Input(shape=(input_size, input_size, n_channels))
     stage0 = discriminator_unit(inp, 64, 5, 2)
     stage1 = discriminator_unit(stage0, 128, 5, 2)
-    stage2 = discriminator_unit(stage1, 256, 5, 2)
-    flat = layers.Flatten()(stage2)
+    flat = layers.Flatten()(stage1)
     boolean = layers.Dense(1)(flat)
     return models.Model(inputs=inp, outputs=boolean)
 
